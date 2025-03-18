@@ -1,15 +1,15 @@
-package migrate
+package main
 
 import (
-	"github.com/rikardoricz/fuel-economy-tracker/initializers"
-	"github.com/rikardoricz/fuel-economy-tracker/models"
+	"github.com/rikardoricz/fuel-economy-go/initializers"
+	"github.com/rikardoricz/fuel-economy-go/models"
 )
 
 func init() {
-	initializers.LoadEnvVars()
+	initializers.LoadEnvVariables()
 	initializers.ConnectToDB()
 }
 
 func main() {
-	initializers.DB.AutoMigrate(&models.Car{})
+	initializers.DB.AutoMigrate(&models.Vehicle{})
 }
