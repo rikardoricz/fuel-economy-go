@@ -4,7 +4,7 @@ import "gorm.io/gorm"
 
 type Vehicle struct {
 	gorm.Model
-	LicensePlate   string
-	Alias          string
-	ProductionYear int
+	LicensePlate   string `json:"license_plate"`
+	Alias          string `json:"alias"`
+	ProductionYear int    `json:"production_year"`
 }

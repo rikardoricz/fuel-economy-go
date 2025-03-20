@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func PostVehicles(c *gin.Context) {
+func CreateVehicles(c *gin.Context) {
 	var body models.Vehicle
 
 	err := c.BindJSON(&body)
