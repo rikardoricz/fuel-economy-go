@@ -40,7 +40,7 @@ func setupRouter() *gin.Engine {
 
 func main() {
 	r := setupRouter()
-	err := r.Run()
+	err := r.Run(":8090")
 	if err != nil {
 		return
 	}

@@ -90,22 +90,13 @@ func UpdateRefueling(c *gin.Context) {
 }
 
 func DeleteRefueling(c *gin.Context) {
-	vehicleID, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	id := c.Param("id")
+	result := initializers.DB.Delete(&models.Refueling{}, id)
 
-	var refueling models.Refueling
-
-	result := initializers.DB.Where("vehicle_id = ?", vehicleID).Find(&refueling)
 	if result.Error != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
-		return
 	}
-
-	initializers.DB.Delete(&refueling)
-	c.IndentedJSON(http.StatusOK, refueling)
+	c.IndentedJSON(http.StatusOK, gin.H{"message": "Refueling deleted", "id": id})
 }
 
 func GetRefuelingByID(c *gin.Context) {

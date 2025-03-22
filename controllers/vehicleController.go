@@ -1,26 +1,37 @@
 package controllers
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/rikardoricz/fuel-economy-go/initializers"
 	"github.com/rikardoricz/fuel-economy-go/models"
+	"gorm.io/gorm"
 	"net/http"
 )
 
 func CreateVehicles(c *gin.Context) {
 	var body models.Vehicle
 
-	err := c.BindJSON(&body)
-	if err != nil {
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON body"})
 		return
 	}
 
-	vehicle := models.Vehicle{LicensePlate: body.LicensePlate, Alias: body.Alias, ProductionYear: body.ProductionYear}
-	result := initializers.DB.Create(&vehicle)
+	vehicle := models.Vehicle{
+		LicensePlate:   body.LicensePlate,
+		Alias:          body.Alias,
+		ProductionYear: body.ProductionYear}
 
+	result := initializers.DB.Create(&vehicle)
 	if result.Error != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		if errors.Is(result.Error, gorm.ErrDuplicatedKey) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Vehicle already exists"})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Vehicle creation failed"})
+		return
 	}
+
 	c.IndentedJSON(http.StatusCreated, vehicle)
 }
 
@@ -29,8 +40,15 @@ func GetVehicles(c *gin.Context) {
 
 	result := initializers.DB.Find(&vehicles)
 	if result.Error != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+		return
 	}
+
+	if result.RowsAffected == 0 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "No vehicles found"})
+		return
+	}
+
 	c.IndentedJSON(http.StatusOK, vehicles)
 }
 
@@ -38,18 +56,37 @@ func GetVehicleByID(c *gin.Context) {
 	var vehicle models.Vehicle
 	id := c.Param("id")
 
-	initializers.DB.First(&vehicle, id)
+	if err := initializers.DB.First(&vehicle, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.IndentedJSON(http.StatusOK, vehicle)
 }
 
 func DeleteVehicles(c *gin.Context) {
 	id := c.Param("id")
-	result := initializers.DB.Delete(&models.Vehicle{}, id)
+	var vehicle models.Vehicle
 
-	if result.Error != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+	if err := initializers.DB.First(&vehicle, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"error": "Vehicle not found"})
+			return
+		}
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
+
+	result := initializers.DB.Delete(&vehicle)
+	if result.Error != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+		return
+	}
+
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Vehicle deleted", "id": id})
 }
 
@@ -58,16 +95,28 @@ func UpdateVehicles(c *gin.Context) {
 	var body models.Vehicle
 	var vehicle models.Vehicle
 
-	err := c.BindJSON(&body)
-	if err != nil {
+	if err := c.BindJSON(&body); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	initializers.DB.First(&vehicle, id)
-	initializers.DB.Model(&vehicle).Updates(models.Vehicle{
+	if err := initializers.DB.First(&vehicle, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if result := initializers.DB.Model(&vehicle).Updates(models.Vehicle{
 		LicensePlate:   body.LicensePlate,
 		Alias:          body.Alias,
-		ProductionYear: body.ProductionYear})
+		ProductionYear: body.ProductionYear,
+	}); result.Error != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
 
 	c.IndentedJSON(http.StatusOK, vehicle)
 }
