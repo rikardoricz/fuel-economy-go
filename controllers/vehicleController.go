@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rikardoricz/fuel-economy-go/initializers"
 	"github.com/rikardoricz/fuel-economy-go/models"
+	"github.com/rikardoricz/fuel-economy-go/utils"
 	"gorm.io/gorm"
 	"net/http"
 )
@@ -37,10 +38,9 @@ func CreateVehicles(c *gin.Context) {
 
 func GetVehicles(c *gin.Context) {
 	var vehicles []models.Vehicle
-
 	result := initializers.DB.Find(&vehicles)
-	if result.Error != nil {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+
+	if utils.HandleModelError(c, result.Error) {
 		return
 	}
 
@@ -53,15 +53,13 @@ func GetVehicles(c *gin.Context) {
 }
 
 func GetVehicleByID(c *gin.Context) {
-	var vehicle models.Vehicle
-	id := c.Param("id")
+	id, err := utils.ParseID(c)
+	if err != nil {
+		return
+	}
 
-	if err := initializers.DB.First(&vehicle, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
-			return
-		}
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	vehicle, err := utils.CheckVehicleExists(id)
+	if utils.HandleModelError(c, err) {
 		return
 	}
 
@@ -69,25 +67,22 @@ func GetVehicleByID(c *gin.Context) {
 }
 
 func DeleteVehicles(c *gin.Context) {
-	id := c.Param("id")
-	var vehicle models.Vehicle
-
-	if err := initializers.DB.First(&vehicle, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.IndentedJSON(http.StatusNotFound, gin.H{"error": "Vehicle not found"})
-			return
-		}
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	id, err := utils.ParseID(c)
+	if err != nil {
 		return
 	}
 
-	result := initializers.DB.Delete(&vehicle)
-	if result.Error != nil {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+	vehicle, err := utils.CheckVehicleExists(id)
+	if utils.HandleModelError(c, err) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, gin.H{"message": "Vehicle deleted", "id": id})
+	result := initializers.DB.Delete(vehicle)
+	if utils.HandleModelError(c, result.Error) {
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, vehicle)
 }
 
 func UpdateVehicles(c *gin.Context) {
