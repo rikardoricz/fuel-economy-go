@@ -25,3 +25,6 @@ go.work.sum
 
 # files inside .idea dir
 .idea/*
+
+# bin dir
+bin/
