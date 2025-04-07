@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-MIGRATION_FLAG="/build/migrations_done"
+MIGRATION_FLAG="/app/migrations_done"
 
 echo "Waiting for postgres to start..."
 until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER"; do
@@ -12,7 +12,7 @@ echo "Postgres is ready"
 
 if [ ! -f "$MIGRATION_FLAG" ]; then
   echo "Running database migrations..."
-  /build/migrate/migrate
+  /app/migrate/migrate
   touch "$MIGRATION_FLAG"
   echo "Migrations completed"
 else
@@ -20,4 +20,4 @@ else
 fi
 
 echo "Starting the app..."
-exec /build/fuel-economy-go
+exec /app/fuel-economy-go
