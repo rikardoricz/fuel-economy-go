@@ -1,4 +1,4 @@
-FROM golang:1.24.1-bullseye AS builder
+FROM golang:1.24.3-alpine AS builder
 
 WORKDIR /build
 
@@ -10,13 +10,11 @@ COPY . .
 RUN go build -o migrate/migrate ./migrate/migrate.go
 RUN go build -o fuel-economy-go ./main.go
 
-FROM debian:bullseye-slim
+FROM alpine:3.14
 
-RUN apt-get update  \
-    && apt-get install -y postgresql-client \
-    && apt-get -y autoremove \
-    && apt-get clean autoclean \
-    && rm -fr /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+RUN apk update \
+    && apk add --no-cache postgresql-client \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
